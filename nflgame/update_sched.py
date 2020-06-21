@@ -42,7 +42,7 @@ def schedule_url(year, stype, week):
         week += 17
         if week == 21:  # NFL.com you so silly
             week += 1
-    return '%sseason=%d&seasonType=%s&week=%d' % (xmlurl, year, stype, week)
+    return '%sseason=%s&seasonType=%s&week=%s' % (xmlurl, year, stype, week)
 
 
 def week_schedule(year, stype, week):

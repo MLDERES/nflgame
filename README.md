@@ -1,5 +1,9 @@
 [![Downloads](https://pepy.tech/badge/nflgame-redux)](https://pepy.tech/project/nflgame-redux)
 
+Project is CURRENTLY [only working with historic data](https://github.com/derek-adair/nflgame/issues/130)
+=================================
+I am doing my best to re-write this project by only scraping data.  You can read up on [why this is necessary](https://derekadair.com/python/async/legally-accessing-nfl-data/), but tl;dr; its the only way we can be in line with nfl's terms of use.
+
 A maintained fork of
 [nflgame](https://github.com/BurntSushi/nflgame/)
 ================

@@ -32,9 +32,9 @@ theoretically keep it running for the entire season.
 import datetime
 import time
 import math
-import requests
 import logging
 import os
+import re
 
 try:
     import pytz
@@ -54,10 +54,6 @@ if log_level == "INFO":
 # [00:21] <rasher> burntsushi: Alright, the schedule changes on Wednesday 7:00
 # UTC during the regular season
 
-_CURRENT_WEEK_ENDPOINT = 'http://www.nfl.com/feeds-rs/currentWeek.json'
-"""
-Used to update the season state based on the nfl feed-rs api
-"""
 
 _MAX_GAME_TIME = 60 * 60 * 6
 """
@@ -70,17 +66,6 @@ _WEEK_INTERVAL = 60 * 60 * 12
 How often to check what the current week is. By default, it is twice a day.
 """
 
-_cur_week = None
-"""The current week. It is updated infrequently automatically."""
-
-_cur_year = None
-"""The current year. It is updated infrequently automatically."""
-
-_cur_season_phase = 'PRE'
-"""The current phase of the season."""
-
-_regular = False
-"""True when it's the regular season."""
 
 _last = None
 """
@@ -94,27 +79,7 @@ A list of game eids that have been completed since the live module started
 checking for updated game stats.
 """
 
-
-def current_season_phase():
-    """
-    Returns the current season phase
-    """
-    _update_week_number()
-    return _cur_season_phase
-
-
-def current_year_and_week():
-    """
-    Returns a tuple (year, week) where year is the current year of the season
-    and week is the current week number of games being played.
-    i.e., (2012, 3).
-
-    """
-    _update_week_number()
-    return _cur_year, _cur_week
-
-
-def current_games(year=None, week=None, kind=_cur_season_phase):
+def current_games(year=None, week=None, kind="REG"):
     """
     Returns a list of game.Games of games that are currently playing.
 
@@ -351,24 +316,3 @@ def _game_datetime(info):
 
 def _now():
     return datetime.datetime.now(pytz.utc)
-
-
-def _update_week_number():
-    global _cur_week, _cur_year, _cur_season_phase
-
-    # requests.get is throwing a 403 w/o setting the user agent
-    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
-    curWeekResponse = requests.get(_CURRENT_WEEK_ENDPOINT, headers=headers)
-
-    if (curWeekResponse.ok):
-        curWeekJson = curWeekResponse.json()
-        week = curWeekJson['week']
-        phase = curWeekJson['seasonType']
-        if phase == "POST" or phase == "PRO":
-            week -= 17
-        _cur_week = week
-        _cur_season_phase = phase
-        _cur_year = curWeekJson['seasonId']
-
-    # return the time for calculating when to check 
-    return time.time()

@@ -2,11 +2,64 @@ from collections import OrderedDict
 import datetime
 import json
 import os.path
+import requests
+import re
+import time
+
+import nflgame.update_sched
 
 __pdoc__ = {}
 
 _sched_json_file = os.path.join(os.path.dirname(__file__), 'schedule.json')
 
+_CURRENT_WEEK_ENDPOINT = 'http://www.nfl.com/schedules/'
+"""
+Used to update the season state based on the url this gets redirected to
+nfl.com/schedules/{current_year}/{phase}{week_number}/
+"""
+_cur_week = None
+"""The current week. It is updated infrequently automatically."""
+
+_cur_year = None
+"""The current year. It is updated infrequently automatically."""
+
+_cur_season_phase = 'PRE'
+"""The current phase of the season."""
+
+def _update_week_number():
+    global _cur_week, _cur_year, _cur_season_phase
+
+    # requests.get is throwing a 403 w/o setting the user agent
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+    curWeekResponse = requests.get(_CURRENT_WEEK_ENDPOINT, headers=headers)
+
+    if (curWeekResponse.ok):
+        schedule_details = curWeekResponse.url.split('/')
+        week = re.findall(r'\d+', schedule_details[5])
+        phase = re.findall(r'\w+', schedule_details[5])
+        _cur_week = week[0]
+        _cur_season_phase = phase[0]
+        _cur_year = schedule_details[4]
+
+    # return the time for calculating when to check 
+    return time.time()
+
+def current_season_phase():
+    """
+    Returns the current season phase
+    """
+    _update_week_number()
+    return _cur_season_phase
+
+def current_year_and_week():
+    """
+    Returns a tuple (year, week) where year is the current year of the season
+    and week is the current week number of games being played.
+    i.e., (2012, 3).
+
+    """
+    _update_week_number()
+    return _cur_year, _cur_week
 
 def calc_desired_weeks(year, phase):
     desired_weeks = []
@@ -67,35 +120,10 @@ def _create_schedule(jsonf=None):
     sched = OrderedDict()
     for gsis_id, info in data.get('games', []):
         sched[gsis_id] = info
-    last_updated = datetime.datetime.utcfromtimestamp(data.get('time', 0))
 
-    if (datetime.datetime.utcnow() - last_updated).total_seconds() >= day:
-        # Only try to update if we can write to the schedule file.
-        if os.access(jsonf, os.W_OK):
-            import nflgame.live
-            import nflgame.update_sched
-            year, week = nflgame.live.current_year_and_week()
-            phase = nflgame.live._cur_season_phase
-            current_week = (year, phase, week)
+    return sched
 
-            missing_weeks = check_missing_weeks(sched, year, phase)
-            weeks_to_update = order_weeks_to_update(missing_weeks, current_week)
-
-            for week_to_update in weeks_to_update:
-                print(('Updating {}').format(week_to_update))
-                year, phase, week = week_to_update
-                week_was_updated = nflgame.update_sched.update_week(sched, year, phase, week)
-                if not week_was_updated:
-                    print(("Week {}{} of {} was either empty, or it couldn't be fetched from NFL.com. Aborting.")\
-                        .format(phase , week, year))
-                    break
-
-            nflgame.update_sched.write_schedule(jsonf, sched)
-            last_updated = datetime.datetime.utcnow()
-
-    return sched, last_updated
-
-games, last_updated = _create_schedule()
+games = _create_schedule()
 
 __pdoc__['nflgame.sched.games'] = """
 An ordered dict of schedule data, where games are ordered by the date
