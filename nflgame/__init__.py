@@ -87,21 +87,18 @@ if sys.version_info.major != 3:
         sys.version_info.major, sys.version_info.minor)))
     sys.exit(1)
 
-import nflgame.game  # noqa
-import nflgame.live  # noqa
-import nflgame.player  # noqa
-import nflgame.sched  # noqa
-import nflgame.seq  # noqaj
+from nflgame import game, live, player, sched, seq
 from nflgame.version import __version__  # noqa
 
-NoPlayers = nflgame.seq.GenPlayerStats(None)
+NoPlayers = seq.GenPlayerStats(None)
 """
 NoPlayers corresponds to the identity element of a Players sequences.
 
 Namely, adding it to any other Players sequence has no effect.
 """
 
-players = nflgame.player._create_players()
+players = player._create_players()
+
 """
 A dict of all players and meta information about each player keyed
 by GSIS ID. (The identifiers used by NFL.com GameCenter.)
@@ -264,7 +261,7 @@ def games_gen(year, week=None, home=None, away=None,
 
     def gen():
         for info in infos:
-            g = nflgame.game.Game(**info)
+            g = game.Game(**info)
             if g is None:
                 continue
             yield g
@@ -427,7 +424,7 @@ def _search_schedule(year=None, week=None, home=None, away=None, kind='REG',
     (as opposed to waiting for a 404 error from NFL.com).
     """
     infos = []
-    for info in nflgame.sched.games.values():
+    for info in sched.games.values():
         y, t, w = info['year'], info['season_type'], info['week']
         h, a = info['home'], info['away']
         if eid is not None:
